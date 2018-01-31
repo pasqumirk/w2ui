@@ -74,6 +74,8 @@
         "Skip": "Salta",
         "Type to search....": "Digita per ricercare....",
         "Yes": "Si",
-        "Yesterday": "ieri"
+        "Yesterday": "ieri",
+		"before": "prima di",
+		"after": "dopo di"
     }
 }

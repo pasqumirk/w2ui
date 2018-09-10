@@ -76,6 +76,9 @@
         "Yes": "Si",
         "Yesterday": "ieri",
 		"before": "prima di",
-		"after": "dopo di"
+		"after": "dopo di",
+		"Current Date & Time": "Data ed ora correnti",
+		"Select Hour": "Scegliere l'ora",
+		"Select Minute": "Scegliere il minuto"
     }
 }

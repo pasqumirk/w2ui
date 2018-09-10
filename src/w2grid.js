@@ -129,6 +129,8 @@
 *   - expendable grids are still working
 *   - added search.type = 'color'
 *   - added getFirst
+*   - added stateSaveColumnProperties
+*   - added stateSaveColumnFallbackValues
 *
 ************************************************************************/
 
@@ -212,6 +214,7 @@
         this.ranges  = [];
         this.menu    = [];
         this.method  = null;  // if defined, then overwrited ajax method
+        this.dataType = null;   // if defined, then overwrited w2utils.settings.dataType
         this.recid   = null;
         this.parser  = null;
 
@@ -241,6 +244,58 @@
             sel_type    : null,
             edit_col    : null,
             isSafari    : (/^((?!chrome|android).)*safari/i).test(navigator.userAgent)
+        };
+
+        // these column properties will be saved in stateSave()
+        this.stateSaveColumnProperties = {
+            caption         : false,
+            field           : true,
+            size            : true,
+            min             : false,
+            max             : false,
+            gridMinWidth    : false,
+            sizeCorrected   : false,
+            sizeCalculated  : true,
+            sizeOriginal    : true,
+            sizeType        : true,
+            hidden          : true,
+            sortable        : false,
+            searchable      : false,
+            resizable       : false,
+            hideable        : false,
+            attr            : false,
+            style           : false,
+            render          : false,
+            title           : false,
+            editable        : false,
+            frozen          : true,
+            info            : false,
+        };
+
+        // these are the stateSave() fallback values if the property to save is not a property of the column object
+        this.stateSaveColumnFallbackValues = {
+            caption         : '',     // column caption
+            field           : '',     // field name to map column to a record
+            size            : null,   // size of column in px or %
+            min             : 20,     // minimum width of column in px
+            max             : null,   // maximum width of column in px
+            gridMinWidth    : null,   // minimum width of the grid when column is visible
+            sizeCorrected   : null,   // read only, corrected size (see explanation below)
+            sizeCalculated  : null,   // read only, size in px (see explanation below)
+            sizeOriginal    : null,
+            sizeType        : null,
+            hidden          : false,  // indicates if column is hidden
+            sortable        : false,  // indicates if column is sortable
+            searchable      : false,  // indicates if column is searchable, bool/string: int,float,date,...
+            resizable       : true,   // indicates if column is resizable
+            hideable        : true,   // indicates if column can be hidden
+            attr            : '',     // string that will be inside the <td ... attr> tag
+            style           : '',     // additional style for the td tag
+            render          : null,   // string or render function
+            title           : null,   // string or function for the title property for the column cells
+            editable        : {},     // editable object if column fields are editable
+            frozen          : false,  // indicates if the column is fixed to the left
+            info            : null    // info bubble, can be bool/object
         };
 
         $.extend(true, this, w2obj.grid, options);
@@ -1159,14 +1214,12 @@
                     case 'in':
                         var tmp = sdata.value;
                         if (sdata.svalue) tmp = sdata.svalue;
-                        if (tmp.indexOf(val1) !== -1) fl++;
-                        if (tmp.indexOf(w2utils.isFloat(val1b) ? parseFloat(val1b) : val1b) !== -1) fl++;
+                        if ((tmp.indexOf(w2utils.isFloat(val1b) ? parseFloat(val1b) : val1b) !== -1) || tmp.indexOf(val1) !== -1) fl++;
                         break;
                     case 'not in':
                         var tmp = sdata.value;
                         if (sdata.svalue) tmp = sdata.svalue;
-                        if (tmp.indexOf(val1) == -1) fl++;
-                        if (tmp.indexOf(w2utils.isFloat(val1b) ? parseFloat(val1b) : val1b) == -1) fl++;
+                        if (!((tmp.indexOf(w2utils.isFloat(val1b) ? parseFloat(val1b) : val1b) !== -1) || tmp.indexOf(val1) !== -1)) fl++;
                         break;
                     case 'begins':
                     case 'begins with': // need for back compatib.
@@ -2388,29 +2441,33 @@
                 headers  : edata.httpHeaders,
                 dataType : 'text'  // expected data type from server
             };
-           if (w2utils.settings.dataType == 'HTTP') {
-                ajaxOptions.data = (typeof ajaxOptions.data == 'object' ? String($.param(ajaxOptions.data, false)).replace(/%5B/g, '[').replace(/%5D/g, ']') : ajaxOptions.data);
-            }
-            if (w2utils.settings.dataType == 'HTTPJSON') {
-                ajaxOptions.data = { request: JSON.stringify(ajaxOptions.data) };
-            }
-            if (w2utils.settings.dataType == 'RESTFULL') {
-                ajaxOptions.type = 'GET';
-                if (params.cmd == 'save')   ajaxOptions.type = 'PUT';  // so far it is always update
-                if (params.cmd == 'delete') ajaxOptions.type = 'DELETE';
-                ajaxOptions.data = (typeof ajaxOptions.data == 'object' ? String($.param(ajaxOptions.data, false)).replace(/%5B/g, '[').replace(/%5D/g, ']') : ajaxOptions.data);
-            }
-            if (w2utils.settings.dataType == 'RESTFULLJSON') {
-                ajaxOptions.type = 'GET';
-                if (params.cmd == 'save')   ajaxOptions.type = 'PUT';  // so far it is always update
-                if (params.cmd == 'delete') ajaxOptions.type = 'DELETE';
-                ajaxOptions.data        = JSON.stringify(ajaxOptions.data);
-                ajaxOptions.contentType = 'application/json';
-            }
-            if (w2utils.settings.dataType == 'JSON') {
-                ajaxOptions.type        = 'POST';
-                ajaxOptions.data        = JSON.stringify(ajaxOptions.data);
-                ajaxOptions.contentType = 'application/json';
+
+            var dataType = this.dataType || w2utils.settings.dataType
+            switch (dataType) {
+                case 'HTTP':
+                    ajaxOptions.data = (typeof ajaxOptions.data == 'object' ? String($.param(ajaxOptions.data, false)).replace(/%5B/g, '[').replace(/%5D/g, ']') : ajaxOptions.data);
+                    break;
+                case 'HTTPJSON':
+                    ajaxOptions.data = { request: JSON.stringify(ajaxOptions.data) };
+                    break;
+                case 'RESTFULL':
+                    ajaxOptions.type = 'GET';
+                    if (params.cmd == 'save')   ajaxOptions.type = 'PUT';  // so far it is always update
+                    if (params.cmd == 'delete') ajaxOptions.type = 'DELETE';
+                    ajaxOptions.data = (typeof ajaxOptions.data == 'object' ? String($.param(ajaxOptions.data, false)).replace(/%5B/g, '[').replace(/%5D/g, ']') : ajaxOptions.data);
+                    break;
+                case 'RESTFULLJSON':
+                    ajaxOptions.type = 'GET';
+                    if (params.cmd == 'save')   ajaxOptions.type = 'PUT';  // so far it is always update
+                    if (params.cmd == 'delete') ajaxOptions.type = 'DELETE';
+                    ajaxOptions.data        = JSON.stringify(ajaxOptions.data);
+                    ajaxOptions.contentType = 'application/json';
+                    break;
+                case 'JSON':
+                    ajaxOptions.type        = 'POST';
+                    ajaxOptions.data        = JSON.stringify(ajaxOptions.data);
+                    ajaxOptions.contentType = 'application/json';
+                    break;
             }
             if (this.method) ajaxOptions.type = this.method;
 
@@ -7490,17 +7547,24 @@
                 sortData    : [],
                 searchData  : []
             };
+            var prop_val;
             for (var i = 0; i < this.columns.length; i++) {
-                var col = this.columns[i];
-                state.columns.push({
-                    field           : col.field,
-                    hidden          : col.hidden ? true : false,
-                    frozen          : col.frozen ? true : false,
-                    size            : col.size ? col.size : null,
-                    sizeCalculated  : col.sizeCalculated ? col.sizeCalculated : null,
-                    sizeOriginal    : col.sizeOriginal ? col.sizeOriginal : null,
-                    sizeType        : col.sizeType ? col.sizeType : null
+                var col = obj.columns[i];
+                var col_save_obj = {};
+                // iterate properties to save
+                Object.keys(obj.stateSaveColumnProperties).forEach(function(prop, idx) {
+                    if(obj.stateSaveColumnProperties[prop]){
+                        // check if the property is defined on the column
+                        if(col[prop] !== undefined){
+                            prop_val = col[prop];
+                        } else {
+                            // use fallback or null
+                            prop_val = obj.stateSaveColumnFallbackValues[prop] || null;
+                        }
+                        col_save_obj[prop] = prop_val;
+                    }
                 });
+                state.columns.push(col_save_obj);
             }
             for (var i = 0; i < this.sortData.length; i++) state.sortData.push($.extend({}, this.sortData[i]));
             for (var i = 0; i < this.searchData.length; i++) state.searchData.push($.extend({}, this.searchData[i]));

@@ -157,14 +157,14 @@ var w2utils = (function ($) {
     }
 
     function isEmail (val) {
-        var email = /^[a-zA-Z0-9._%-]+@[а-яА-Яa-zA-Z0-9.-]+\.[а-яА-Яa-zA-Z]+$/;
+        var email = /^[a-zA-Z0-9._%\-+]+@[а-яА-Яa-zA-Z0-9.-]+\.[а-яА-Яa-zA-Z]+$/;
         return email.test(val);
     }
-    
+
     function isIpAddress (val) {
         var re = new RegExp('^' +
                             '((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}' +
-                            '(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)' + 
+                            '(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)' +
                             '$');
         return re.test(val);
     }
@@ -479,6 +479,7 @@ var w2utils = (function ($) {
         if (format.indexOf('am') !== -1 || format.indexOf('pm') !== -1) {
             if (hour >= 12) type = 'pm';
             if (hour > 12)  hour = hour - 12;
+            if (hour === 0) hour = 12;
         }
         return format.toLowerCase()
             .replace('am', type)
@@ -2475,9 +2476,9 @@ w2utils.event = {
 
         // need time to display
         setTimeout(function () {
-            resize();
             $(document).off('.w2overlay'+ name).on('click.w2overlay'+ name, hide);
             if (typeof options.onShow === 'function') options.onShow();
+            resize();
         }, 10);
 
         monitor();
@@ -2501,6 +2502,8 @@ w2utils.event = {
         function hide(event) {
             if (event && event.button !== 0) return; // only for left click button
             var div1 = $('#w2ui-overlay'+ name);
+            // Allow clicking inside other overlays which belong to the elements inside this overlay
+            if (event && $($(event.target).closest('.w2ui-overlay').data('element')).closest('.w2ui-overlay')[0] === div1[0]) return;
             if (div1.data('keepOpen') === true) {
                 div1.removeData('keepOpen');
                 return;
@@ -2662,11 +2665,6 @@ w2utils.event = {
                 if (overflowY && options.align !== 'both') div2.width(w + w2utils.scrollBarSize() + 2);
             }
             menu.css('overflow-y', 'auto');
-
-            // if outer div is bigger, match the size
-            if (div2.height() < div1.height()) {
-                div2.css('height', div1.height() + 'px');
-            }
         }
     };
 
@@ -2833,7 +2831,7 @@ w2utils.event = {
                 var scrTop = $('#w2ui-overlay'+ name +' div.menu').scrollTop();
                 cur.addClass('w2ui-selected');
                 if (options.tmp) options.tmp.contentHeight = $('#w2ui-overlay'+ name +' table').height() + (options.search ? 50 : 10);
-                if (options.tmp) options.tmp.contentWidth  = $('#w2ui-overlay'+ name +' table').width();
+                if (options.tmp) options.tmp.contentWidth  = $('#w2ui-overlay'+ name +' table').width() + 1;
                 if ($('#w2ui-overlay'+ name).length > 0) $('#w2ui-overlay'+ name)[0].resize();
                 // scroll into view
                 if (cur.length > 0) {
